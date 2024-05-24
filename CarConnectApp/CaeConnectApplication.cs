@@ -1,295 +1,436 @@
 using CarConnect.Exceptions;
+using System;
+using System.Collections.Generic;
 using CarConnect.Model;
 using CarConnect.Service;
-using System;
+using CarConnect.Util;
 
 namespace CarConnect.CarConnectApp
 {
     internal class CarConnectApplication
     {
+       
+
         private CustomerService customerService = new CustomerService();
-        private AdminService AdminService = new AdminService();
-        private ReservationService reservationService = new ReservationService();
-        private VehicleService vehicleService = new VehicleService();
-        private Admin admin=new Admin();
+        private AdminService adminService = new AdminService();
+        private static ReservationService reservationService = new ReservationService();
+        private static VehicleService vehicleService = new VehicleService();
+        private Admin admin = new Admin();
+        private static ReportGenerator reportGenerator = new ReportGenerator(reservationService, vehicleService);
 
         public static void MainMenu()
         {
             AdminService adminService = new AdminService();
+            AuthenticationService authService = new AuthenticationService(new CustomerService(), new AdminService());
+            CustomerService customerService = new CustomerService(); // Instantiate CustomerService here
 
-            while (true)
+            bool exitProgram = false;
+
+            while (!exitProgram)
             {
                 Console.WriteLine("\n\n1.Admin");
                 Console.WriteLine("2.Customer");
-                Console.WriteLine("3.Exit\n");
+                Console.WriteLine("3.Report Generator");
+                Console.WriteLine("4.Exit\n");
+
                 string choice = Console.ReadLine();
+
                 switch (choice)
                 {
                     case "1":
-                        Console.WriteLine("1.Admin Service");
-                        Console.WriteLine("2.Reservation Service");
-                        Console.WriteLine("0.Main Menu\n");
-                        string option = Console.ReadLine();
-                        switch (option)
-                        {
-                            case "1":
-                                Console.WriteLine("Login to use Admin Services:");
-                                Console.Write("Enter Admin ID: ");
-                                int adminId = int.Parse(Console.ReadLine());
-                                Console.Write("Enter Password: ");
-                                string password = Console.ReadLine();
-                                try
-                                {
-                                    adminService.ValidateAdmin(adminId, password);
-                                    AdminServiceMenu();
-                                    break;
-                                }
-                                catch (AdminNotFoundException ex)
-                                {
-                                    Console.WriteLine(ex.Message);
-                                }
-                                break; 
-                            case "2":
-                                ReservationServiceMenu();
-                                break;
-                            case "0":
-                                return;
-                            default:
-                                Console.WriteLine("Invalid choice. Press any key to continue...");
-                                Console.ReadKey();
-                                break;
-                        }
+                        Console.WriteLine("\n\nLogin to use Admin Services:");
+                        Console.Write("Enter Admin Username: ");
+                        string adminUsername = Console.ReadLine();
+                        Console.Write("Enter Password: ");
+                        string adminPassword = Console.ReadLine();
 
+                        try
+                        {
+                            if (authService.AuthenticateAdmin(adminUsername, adminPassword))
+                            {
+                                bool backToMainMenu = false;
+                                while (!backToMainMenu)
+                                {
+                                    Console.WriteLine("\n\nChoose the service required:");
+                                    Console.WriteLine("1.Admin Service");
+                                    Console.WriteLine("2.Reservation Service");
+                                    Console.WriteLine("3.Vehicle Service");
+                                    Console.WriteLine("4.Customer Service");
+                                    Console.WriteLine("0.Main Menu\n");
+                                    string option = Console.ReadLine();
+                                    switch (option)
+                                    {
+                                        case "1":
+                                            AdminServiceMenu();
+                                            break;
+                                        case "2":
+                                            ReservationServiceMenu();
+                                            break;
+                                        case "3":
+                                            VehicleServiceMenu(true); // Admin has full access
+                                            break;
+                                        case "4":
+                                            AdminCustomerServiceMenu();
+                                            break;
+                                        case "0":
+                                            backToMainMenu = true;
+                                            break;
+                                        default:
+                                            Console.WriteLine("Invalid choice. Press any key to continue...");
+                                            Console.ReadKey();
+                                            break;
+                                    }
+                                }
+                            }
+                        }
+                        catch (AuthenticationException ex)
+                        {
+                            Console.WriteLine(ex.Message);
+                        }
                         break;
 
                     case "2":
-                        Console.WriteLine("1.Customer Service");
-                        Console.WriteLine("2.Vehicle Service");
-                        Console.WriteLine("0.Main Menu\n");
-                        string choose = Console.ReadLine();
-                        switch (choose)
+                        Console.WriteLine("\n\nLogin to use Customer Services:");
+                        Console.Write("Enter Customer Username: ");
+                        string customerUsername = Console.ReadLine();
+                        Console.Write("Enter Password: ");
+                        string customerPassword = Console.ReadLine();
+
+                        try
                         {
-                            case "1":
-                                CustomerServiceMenu();
-                                break;
-                            case "2":
-                                VehicleServiceMenu();
-                                break;
-                            case "0":
-                                return;
-                            default:
-                                Console.WriteLine("Invalid choice. Press any key to continue...");
-                                Console.ReadKey();
-                                break;
+                            if (authService.AuthenticateCustomer(customerUsername, customerPassword))
+                            {
+                                bool backToMainMenu = false;
+                                while (!backToMainMenu)
+                                {
+                                    Console.WriteLine("\nChoose the service required:");
+                                    Console.WriteLine("1.Customer Service");
+                                    Console.WriteLine("2.Vehicle Service");
+                                    Console.WriteLine("3.Register Customer");
+                                    Console.WriteLine("0.Main Menu\n");
+                                    string option = Console.ReadLine();
+                                    switch (option)
+                                    {
+                                        case "1":
+                                            CustomerServiceMenu(customerUsername);
+                                            break;
+                                        case "2":
+                                            VehicleServiceMenu(false); // Customer has limited access
+                                            break;
+                                        case "3":
+                                            try
+                                            {
+                                                Console.Write("Enter First Name: ");
+                                                string firstName = Console.ReadLine();
+                                                Console.Write("Enter Last Name: ");
+                                                string lastName = Console.ReadLine();
+                                                Console.Write("Enter Email: ");
+                                                string email = Console.ReadLine();
+                                                Console.Write("Enter Phone Number: ");
+                                                string phoneNumber = Console.ReadLine();
+                                                Console.Write("Enter Address: ");
+                                                string address = Console.ReadLine();
+                                                Console.Write("Enter Username: ");
+                                                string username = Console.ReadLine();
+                                                Console.Write("Enter Password: ");
+                                                string password = Console.ReadLine();
+
+                                                Customer newCustomer = new Customer
+                                                {
+                                                    FIRST_NAME = firstName,
+                                                    LAST_NAME = lastName,
+                                                    EMAIL = email,
+                                                    PHONE_NUMBER = phoneNumber,
+                                                    ADDRESS = address,
+                                                    USERNAME = username,
+                                                    PASSWORD = password,
+                                                    registration_date = DateTime.Now
+                                                };
+
+                                                customerService.RegisterCustomer(newCustomer);
+                                                Console.WriteLine("Customer added successfully.");
+                                            }
+                                            catch (FormatException)
+                                            {
+                                                Console.WriteLine("Invalid input format.");
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Console.WriteLine($"An error occurred: {ex.Message}");
+                                            }
+                                            Console.WriteLine("Press any key to continue...");
+                                            Console.ReadKey();
+                                            break;
+                                            
+                                        case "0":
+                                            backToMainMenu = true;
+                                            break;
+                                        default:
+                                            Console.WriteLine("Invalid choice. Press any key to continue...");
+                                            Console.ReadKey();
+                                            break;
+                                    }
+                                }
+                            }
+                        }
+                        catch (AuthenticationException ex)
+                        {
+                            Console.WriteLine(ex.Message);
                         }
                         break;
 
-
                     case "3":
-                        return;
+                        ReportGeneratorMenu();
+                        break;
+
+                    case "0":
+                        exitProgram = true;
+                        break;
 
                     default:
                         Console.WriteLine("Invalid choice. Press any key to continue...");
                         Console.ReadKey();
                         break;
-
-
                 }
             }
-            
-            static void CustomerServiceMenu()
+        }
+
+
+
+        static void AdminCustomerServiceMenu()
+        {
+            CarConnectApplication carConnectApp = new CarConnectApplication();
+            while (true)
             {
-                CarConnectApplication carConnectApp = new CarConnectApplication();
-                while (true)
+                Console.WriteLine("\n\nAdmin Customer Service Menu");
+                Console.WriteLine("1. Get Customer by ID");
+                Console.WriteLine("2. Get Customer by Username");
+                Console.WriteLine("3. Register Customer");
+                Console.WriteLine("4. Update Customer");
+                Console.WriteLine("5. Delete Customer");
+                Console.WriteLine("0. Back to Main Menu");
+                Console.Write("Select an option: ");
+                string choice = Console.ReadLine();
+
+                switch (choice)
                 {
-                    
-                    Console.WriteLine("\n\nCustomer Service Menu");
-                    Console.WriteLine("1. Get Customer by ID");
-                    Console.WriteLine("2. Get Customer by Username");
-                    Console.WriteLine("3. Register Customer");
-                    Console.WriteLine("4. Update Customer");
-                    Console.WriteLine("5. Delete Customer");
-                    Console.WriteLine("0. Back to Main Menu");
-                    Console.Write("Select an option: ");
-                    string choice = Console.ReadLine();
-
-                    switch (choice)
-                    {
-                        case "1":
-                            try
-                            {
-                                Console.Write("Enter Customer ID: ");
-                                int customerId = int.Parse(Console.ReadLine());
-                                Customer customerById = carConnectApp.customerService.GetCustomerById(customerId);
-                                if (customerById != null)
-                                {
-                                    Console.WriteLine($"Customer Details:");
-                                    Console.WriteLine($"Customer ID: {customerById.CUSTOMER_ID}");
-                                    Console.WriteLine($"First Name: {customerById.FIRST_NAME}");
-                                    Console.WriteLine($"Last Name: {customerById.LAST_NAME}");
-                                    Console.WriteLine($"Email: {customerById.EMAIL}");
-                                    Console.WriteLine($"Phone Number: {customerById.PHONE_NUMBER}");
-                                    Console.WriteLine($"Address: {customerById.ADDRESS}");
-                                    Console.WriteLine($"Username: {customerById.USERNAME}");
-                                    Console.WriteLine($"Registration Date: {customerById.registration_date}");
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Customer not found.");
-                                }
-                            }
-                            catch (FormatException)
-                            {
-                                Console.WriteLine("Invalid input. Please enter a valid Customer ID.");
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
-                            break;
-
-
-
-                        case "2":
-                            Console.Write("Enter Username: ");
-                            string username = Console.ReadLine();
-                            Customer customerByUsername = carConnectApp.customerService.GetCustomerByUsername(username);
-                            if (customerByUsername != null)
+                    case "1":
+                        try
+                        {
+                            Console.Write("Enter Customer ID: ");
+                            int customerId = int.Parse(Console.ReadLine());
+                            Customer customerById = carConnectApp.customerService.GetCustomerById(customerId);
+                            if (customerById != null)
                             {
                                 Console.WriteLine($"Customer Details:");
-                                Console.WriteLine($"Customer ID: {customerByUsername.CUSTOMER_ID}");
-                                Console.WriteLine($"First Name: {customerByUsername.FIRST_NAME}");
-                                Console.WriteLine($"Last Name: {customerByUsername.LAST_NAME}");
-                                Console.WriteLine($"Email: {customerByUsername.EMAIL}");
-                                Console.WriteLine($"Phone Number: {customerByUsername.PHONE_NUMBER}");
-                                Console.WriteLine($"Address: {customerByUsername.ADDRESS}");
-                                Console.WriteLine($"Username: {customerByUsername.USERNAME}");
-                                Console.WriteLine($"Registration Date: {customerByUsername.registration_date}");
+                                Console.WriteLine($"Customer ID: {customerById.CUSTOMER_ID}");
+                                Console.WriteLine($"First Name: {customerById.FIRST_NAME}");
+                                Console.WriteLine($"Last Name: {customerById.LAST_NAME}");
+                                Console.WriteLine($"Email: {customerById.EMAIL}");
+                                Console.WriteLine($"Phone Number: {customerById.PHONE_NUMBER}");
+                                Console.WriteLine($"Address: {customerById.ADDRESS}");
+                                Console.WriteLine($"Username: {customerById.USERNAME}");
+                                Console.WriteLine($"Registration Date: {customerById.registration_date}");
                             }
                             else
                             {
                                 Console.WriteLine("Customer not found.");
                             }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
-                            break;
+                        }
+                        catch (FormatException)
+                        {
+                            Console.WriteLine("Invalid input. Please enter a valid Customer ID.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"An error occurred: {ex.Message}");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
 
+                    case "2":
+                        Console.Write("Enter Username: ");
+                        string username = Console.ReadLine();
+                        Customer customerByUsername = carConnectApp.customerService.GetCustomerByUsername(username);
+                        if (customerByUsername != null)
+                        {
+                            Console.WriteLine($"Customer Details:");
+                            Console.WriteLine($"Customer ID: {customerByUsername.CUSTOMER_ID}");
+                            Console.WriteLine($"First Name: {customerByUsername.FIRST_NAME}");
+                            Console.WriteLine($"Last Name: {customerByUsername.LAST_NAME}");
+                            Console.WriteLine($"Email: {customerByUsername.EMAIL}");
+                            Console.WriteLine($"Phone Number: {customerByUsername.PHONE_NUMBER}");
+                            Console.WriteLine($"Address: {customerByUsername.ADDRESS}");
+                            Console.WriteLine($"Username: {customerByUsername.USERNAME}");
+                            Console.WriteLine($"Registration Date: {customerByUsername.registration_date}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Customer not found.");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
 
+                    case "3":
+                        Console.Write("Enter First Name: ");
+                        string firstName = Console.ReadLine();
+                        Console.Write("Enter Last Name: ");
+                        string lastName = Console.ReadLine();
+                        Console.Write("Enter Email: ");
+                        string email = Console.ReadLine();
+                        Console.Write("Enter Phone Number: ");
+                        string phoneNumber = Console.ReadLine();
+                        Console.Write("Enter Address: ");
+                        string address = Console.ReadLine();
+                        Console.Write("Enter Username: ");
+                        string uname = Console.ReadLine();
+                        Console.Write("Enter Password: ");
+                        string password = Console.ReadLine();
 
-                        case "3":
-                            Console.Write("Enter First Name: ");
-                            string firstName = Console.ReadLine();
-                            Console.Write("Enter Last Name: ");
-                            string lastName = Console.ReadLine();
-                            Console.Write("Enter Email: ");
-                            string email = Console.ReadLine();
-                            Console.Write("Enter Phone Number: ");
-                            string phoneNumber = Console.ReadLine();
-                            Console.Write("Enter Address: ");
-                            string address = Console.ReadLine();
-                            Console.Write("Enter Username: ");
-                            string uname = Console.ReadLine();
-                            Console.Write("Enter Password: ");
-                            string password = Console.ReadLine();
+                        Customer newCustomer = new Customer
+                        {
+                            FIRST_NAME = firstName,
+                            LAST_NAME = lastName,
+                            EMAIL = email,
+                            PHONE_NUMBER = phoneNumber,
+                            ADDRESS = address,
+                            USERNAME = uname,
+                            PASSWORD = password,
+                            registration_date = DateTime.Now
+                        };
 
-                            Customer newCustomer = new Customer
+                        carConnectApp.customerService.RegisterCustomer(newCustomer);
+                        Console.WriteLine("Customer registered successfully.");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
+                    case "4":
+                        try
+                        {
+                            Console.Write("Enter Customer ID to update: ");
+                            int updateCustomerId = int.Parse(Console.ReadLine());
+
+                            Customer existingCustomer = carConnectApp.customerService.GetCustomerById(updateCustomerId);
+                            if (existingCustomer == null)
                             {
-                                FIRST_NAME = firstName,
-                                LAST_NAME = lastName,
-                                EMAIL = email,
-                                PHONE_NUMBER = phoneNumber,
-                                ADDRESS = address,
-                                USERNAME = uname,
-                                PASSWORD = password,
-                                registration_date = DateTime.Now
+                                Console.WriteLine("Customer not found.");
+                                break;
+                            }
+
+                            Console.WriteLine($"Updating details for Customer: {existingCustomer.FIRST_NAME} {existingCustomer.LAST_NAME}");
+
+                            Console.Write($"Enter First Name ({existingCustomer.FIRST_NAME}): ");
+                            string newFirstName = Console.ReadLine();
+                            Console.Write($"Enter Last Name ({existingCustomer.LAST_NAME}): ");
+                            string newLastName = Console.ReadLine();
+                            Console.Write($"Enter Email ({existingCustomer.EMAIL}): ");
+                            string newEmail = Console.ReadLine();
+                            Console.Write($"Enter Phone Number ({existingCustomer.PHONE_NUMBER}): ");
+                            string newPhoneNumber = Console.ReadLine();
+                            Console.Write($"Enter Address ({existingCustomer.ADDRESS}): ");
+                            string newAddress = Console.ReadLine();
+                            Console.Write($"Enter Username ({existingCustomer.USERNAME}): ");
+                            string newUsername = Console.ReadLine();
+                            Console.Write("Enter New Password: ");
+                            string newPassword = Console.ReadLine();
+
+                            Customer updatedCustomer = new Customer
+                            {
+                                CUSTOMER_ID = updateCustomerId,
+                                FIRST_NAME = string.IsNullOrEmpty(newFirstName) ? existingCustomer.FIRST_NAME : newFirstName,
+                                LAST_NAME = string.IsNullOrEmpty(newLastName) ? existingCustomer.LAST_NAME : newLastName,
+                                EMAIL = string.IsNullOrEmpty(newEmail) ? existingCustomer.EMAIL : newEmail,
+                                PHONE_NUMBER = string.IsNullOrEmpty(newPhoneNumber) ? existingCustomer.PHONE_NUMBER : newPhoneNumber,
+                                ADDRESS = string.IsNullOrEmpty(newAddress) ? existingCustomer.ADDRESS : newAddress,
+                                USERNAME = string.IsNullOrEmpty(newUsername) ? existingCustomer.USERNAME : newUsername,
+                                PASSWORD = string.IsNullOrEmpty(newPassword) ? existingCustomer.PASSWORD : newPassword,
+                                registration_date = existingCustomer.registration_date
                             };
 
-                            carConnectApp.customerService.RegisterCustomer(newCustomer);
-                            Console.WriteLine("Customer registered successfully.");
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
+                            carConnectApp.customerService.UpdateCustomer(updatedCustomer);
+                            Console.WriteLine("Customer details updated successfully.");
+                        }
+                        catch (FormatException)
+                        {
+                            Console.WriteLine("Invalid input. Please enter a valid Customer ID.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"An error occurred: {ex.Message}");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
+                    case "5":
+                        try
+                        {
+                            Console.Write("Enter Customer ID to delete: ");
+                            int deleteCustomerId = int.Parse(Console.ReadLine());
+                            carConnectApp.customerService.DeleteCustomer(deleteCustomerId);
+                        }
+                        catch (FormatException)
+                        {
+                            Console.WriteLine("Invalid input. Please enter a valid Customer ID.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"An error occurred: {ex.Message}");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("Invalid choice. Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+                }
+            }
+        }
+
+
+
+
+        static void ReportGeneratorMenu()
+            {
+                while (true)
+                {
+                    Console.WriteLine("\n\nReport Generator:");
+                    Console.WriteLine("1. Generate Reservation History Report");
+                    Console.WriteLine("2. Generate Vehicle Utilization Report");
+                    Console.WriteLine("3. Generate Revenue Report");
+                    Console.WriteLine("0. Main Menu\n");
+                    string choice = Console.ReadLine();
+
+                    switch (choice)
+                    {
+                        case "1":
+                            Console.Write("Enter start date (yyyy-mm-dd): ");
+                            DateTime startDate1 = DateTime.Parse(Console.ReadLine());
+                            Console.Write("Enter end date (yyyy-mm-dd): ");
+                            DateTime endDate1 = DateTime.Parse(Console.ReadLine());
+                            reportGenerator.GenerateReservationHistoryReport(startDate1, endDate1);
                             break;
-
-
-                        case "4":
-                            try
-                            {
-                                Console.Write("Enter Customer ID to update: ");
-                                int updateCustomerId = int.Parse(Console.ReadLine());
-
-                                Customer existingCustomer = carConnectApp.customerService.GetCustomerById(updateCustomerId);
-                                if (existingCustomer == null)
-                                {
-                                    Console.WriteLine("Customer not found.");
-                                    break;
-                                }
-
-                                Console.WriteLine($"Updating details for Customer: {existingCustomer.FIRST_NAME} {existingCustomer.LAST_NAME}");
-
-                                Console.Write($"Enter First Name ({existingCustomer.FIRST_NAME}): ");
-                                string newFirstName = Console.ReadLine();
-                                Console.Write($"Enter Last Name ({existingCustomer.LAST_NAME}): ");
-                                string newLastName = Console.ReadLine();
-                                Console.Write($"Enter Email ({existingCustomer.EMAIL}): ");
-                                string newEmail = Console.ReadLine();
-                                Console.Write($"Enter Phone Number ({existingCustomer.PHONE_NUMBER}): ");
-                                string newPhoneNumber = Console.ReadLine();
-                                Console.Write($"Enter Address ({existingCustomer.ADDRESS}): ");
-                                string newAddress = Console.ReadLine();
-                                Console.Write($"Enter Username ({existingCustomer.USERNAME}): ");
-                                string newUsername = Console.ReadLine();
-                                Console.Write("Enter New Password: ");
-                                string newPassword = Console.ReadLine();
-
-                                Customer updatedCustomer = new Customer
-                                {
-                                    CUSTOMER_ID = updateCustomerId,
-                                    FIRST_NAME = string.IsNullOrEmpty(newFirstName) ? existingCustomer.FIRST_NAME : newFirstName,
-                                    LAST_NAME = string.IsNullOrEmpty(newLastName) ? existingCustomer.LAST_NAME : newLastName,
-                                    EMAIL = string.IsNullOrEmpty(newEmail) ? existingCustomer.EMAIL : newEmail,
-                                    PHONE_NUMBER = string.IsNullOrEmpty(newPhoneNumber) ? existingCustomer.PHONE_NUMBER : newPhoneNumber,
-                                    ADDRESS = string.IsNullOrEmpty(newAddress) ? existingCustomer.ADDRESS : newAddress,
-                                    USERNAME = string.IsNullOrEmpty(newUsername) ? existingCustomer.USERNAME : newUsername,
-                                    PASSWORD = string.IsNullOrEmpty(newPassword) ? existingCustomer.PASSWORD : newPassword,
-                                    registration_date = existingCustomer.registration_date
-                                };
-
-                                carConnectApp.customerService.UpdateCustomer(updatedCustomer);
-                                Console.WriteLine("Customer details updated successfully.");
-                            }
-                            catch (FormatException)
-                            {
-                                Console.WriteLine("Invalid input. Please enter a valid Customer ID.");
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
+                        case "2":
+                            Console.Write("Enter start date (yyyy-mm-dd): ");
+                            DateTime startDate2 = DateTime.Parse(Console.ReadLine());
+                            Console.Write("Enter end date (yyyy-mm-dd): ");
+                            DateTime endDate2 = DateTime.Parse(Console.ReadLine());
+                            reportGenerator.GenerateVehicleUtilizationReport(startDate2, endDate2);
                             break;
-
-                        case "5":
-                            try
-                            {
-                                Console.Write("Enter Customer ID to delete: ");
-                                int deleteCustomerId = int.Parse(Console.ReadLine());
-                                carConnectApp.customerService.DeleteCustomer(deleteCustomerId);
-                            }
-                            catch (FormatException)
-                            {
-                                Console.WriteLine("Invalid input. Please enter a valid Customer ID.");
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
+                        case "3":
+                            Console.Write("Enter start date (yyyy-mm-dd): ");
+                            DateTime startDate3 = DateTime.Parse(Console.ReadLine());
+                            Console.Write("Enter end date (yyyy-mm-dd): ");
+                            DateTime endDate3 = DateTime.Parse(Console.ReadLine());
+                            reportGenerator.GenerateRevenueReport(startDate3, endDate3);
                             break;
-
                         case "0":
                             return;
                         default:
@@ -300,19 +441,25 @@ namespace CarConnect.CarConnectApp
                 }
             }
 
-            static void VehicleServiceMenu()
+            static void VehicleServiceMenu(bool isAdmin)
             {
                 VehicleService vehicleService = new VehicleService();
                 CarConnectApplication carConnectApp = new CarConnectApplication();
+
                 while (true)
                 {
-                    
                     Console.WriteLine("\n\nVehicle Service Menu");
                     Console.WriteLine("1. Get Vehicle by ID");
                     Console.WriteLine("2. Get Available Vehicles");
-                    Console.WriteLine("3. Add Vehicle");
-                    Console.WriteLine("4. Update Vehicle");
-                    Console.WriteLine("5. Remove Vehicle");
+
+                    // Admin-only options
+                    if (isAdmin)
+                    {
+                        Console.WriteLine("3. Add Vehicle");
+                        Console.WriteLine("4. Update Vehicle");
+                        Console.WriteLine("5. Remove Vehicle");
+                    }
+
                     Console.WriteLine("0. Back to Main Menu");
                     Console.Write("Select an option: ");
                     string choice = Console.ReadLine();
@@ -380,133 +527,154 @@ namespace CarConnect.CarConnectApp
                             break;
 
                         case "3":
-                            try
+                            if (isAdmin)
                             {
-                                Console.Write("Enter Model: ");
-                                string model = Console.ReadLine();
-                                Console.Write("Enter Maker: ");
-                                string maker = Console.ReadLine();
-                                Console.Write("Enter Year of Collection (YYYY-MM-DD): ");
-                                DateTime yearCol = DateTime.Parse(Console.ReadLine());
-                                Console.Write("Enter Color: ");
-                                string color = Console.ReadLine();
-                                Console.Write("Enter Registration Number: ");
-                                string regNum = Console.ReadLine();
-                                Console.Write("Enter Availability (true/false): ");
-                                bool availability = bool.Parse(Console.ReadLine());
-                                Console.Write("Enter Daily Rate: ");
-                                decimal dailyRate = decimal.Parse(Console.ReadLine());
-
-                                Vehicle newVehicle = new Vehicle
+                                try
                                 {
-                                    MODEL = model,
-                                    MAKER = maker,
-                                    YEAR_COL = yearCol,
-                                    COLOR = color,
-                                    REGISTRATION_NUM = regNum,
-                                    AVAILABILITY = availability,
-                                    DIALY_RATE = dailyRate
-                                };
+                                    Console.Write("Enter Model: ");
+                                    string model = Console.ReadLine();
+                                    Console.Write("Enter Maker: ");
+                                    string maker = Console.ReadLine();
+                                    Console.Write("Enter Year of Collection (YYYY-MM-DD): ");
+                                    DateTime yearCol = DateTime.Parse(Console.ReadLine());
+                                    Console.Write("Enter Color: ");
+                                    string color = Console.ReadLine();
+                                    Console.Write("Enter Registration Number: ");
+                                    string regNum = Console.ReadLine();
+                                    Console.Write("Enter Availability (true/false): ");
+                                    bool availability = bool.Parse(Console.ReadLine());
+                                    Console.Write("Enter Daily Rate: ");
+                                    decimal dailyRate = decimal.Parse(Console.ReadLine());
 
-                                vehicleService.AddVehicle(newVehicle);
+                                    Vehicle newVehicle = new Vehicle
+                                    {
+                                        MODEL = model,
+                                        MAKER = maker,
+                                        YEAR_COL = yearCol,
+                                        COLOR = color,
+                                        REGISTRATION_NUM = regNum,
+                                        AVAILABILITY = availability,
+                                        DIALY_RATE = dailyRate
+                                    };
+
+                                    vehicleService.AddVehicle(newVehicle);
+                                    Console.WriteLine("Vehicle added successfully.");
+                                }
+                                catch (FormatException)
+                                {
+                                    Console.WriteLine("Invalid input format.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"An error occurred: {ex.Message}");
+                                }
+                                Console.WriteLine("Press any key to continue...");
+                                Console.ReadKey();
                             }
-                            catch (FormatException)
+                            else
                             {
-                                Console.WriteLine("Invalid input format.");
+                                Console.WriteLine("You do not have permission to perform this action.");
+                                Console.WriteLine("Press any key to continue...");
+                                Console.ReadKey();
                             }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
                             break;
 
                         case "4":
-                            try
+                            if (isAdmin)
                             {
-                                Console.Write("Enter Vehicle ID to update: ");
-                                int updateVehicleId = int.Parse(Console.ReadLine());
-
-                                Vehicle existingVehicle = carConnectApp.vehicleService.GetVehicleById(updateVehicleId);
-                                if (existingVehicle == null)
+                                try
                                 {
-                                    Console.WriteLine("Vehicle not found.");
-                                    break;
+                                    Console.Write("Enter Vehicle ID to update: ");
+                                    int updateVehicleId = int.Parse(Console.ReadLine());
+
+                                    Vehicle existingVehicle = vehicleService.GetVehicleById(updateVehicleId);
+                                    if (existingVehicle == null)
+                                    {
+                                        Console.WriteLine("Vehicle not found.");
+                                        break;
+                                    }
+
+                                    Console.WriteLine($"Updating details for Vehicle: {existingVehicle.MODEL} {existingVehicle.MAKER}");
+
+                                    Console.Write($"Enter Model ({existingVehicle.MODEL}): ");
+                                    string newModel = Console.ReadLine();
+                                    Console.Write($"Enter Maker ({existingVehicle.MAKER}): ");
+                                    string newMaker = Console.ReadLine();
+                                    Console.Write($"Enter Year of Collection ({existingVehicle.YEAR_COL}): ");
+                                    string newYearCol = Console.ReadLine();
+                                    Console.Write($"Enter Color ({existingVehicle.COLOR}): ");
+                                    string newColor = Console.ReadLine();
+                                    Console.Write($"Enter Registration Number ({existingVehicle.REGISTRATION_NUM}): ");
+                                    string newRegNum = Console.ReadLine();
+                                    Console.Write($"Enter Availability ({existingVehicle.AVAILABILITY}): ");
+                                    string newAvailability = Console.ReadLine();
+                                    Console.Write($"Enter Daily Rate ({existingVehicle.DIALY_RATE}): ");
+                                    string newDailyRate = Console.ReadLine();
+
+                                    if (!string.IsNullOrEmpty(newModel)) existingVehicle.MODEL = newModel;
+                                    if (!string.IsNullOrEmpty(newMaker)) existingVehicle.MAKER = newMaker;
+                                    if (!string.IsNullOrEmpty(newYearCol)) existingVehicle.YEAR_COL = DateTime.Parse(newYearCol);
+                                    if (!string.IsNullOrEmpty(newColor)) existingVehicle.COLOR = newColor;
+                                    if (!string.IsNullOrEmpty(newRegNum)) existingVehicle.REGISTRATION_NUM = newRegNum;
+                                    if (!string.IsNullOrEmpty(newAvailability)) existingVehicle.AVAILABILITY = bool.Parse(newAvailability);
+                                    if (!string.IsNullOrEmpty(newDailyRate)) existingVehicle.DIALY_RATE = decimal.Parse(newDailyRate);
+
+                                    vehicleService.UpdateVehicle(existingVehicle);
+                                    Console.WriteLine("Vehicle details updated successfully.");
                                 }
-
-                                Console.WriteLine($"Updating details for Vehicle: {existingVehicle.MODEL} {existingVehicle.MAKER}");
-
-                                Console.Write($"Enter Model ({existingVehicle.MODEL}): ");
-                                string newModel = Console.ReadLine();
-                                Console.Write($"Enter Maker ({existingVehicle.MAKER}): ");
-                                string newMaker = Console.ReadLine();
-                                Console.Write($"Enter Year of Collection ({existingVehicle.YEAR_COL}): ");
-                                string newYearCol = Console.ReadLine();
-                                Console.Write($"Enter Color ({existingVehicle.COLOR}): ");
-                                string newColor = Console.ReadLine();
-                                Console.Write($"Enter Registration Number ({existingVehicle.REGISTRATION_NUM}): ");
-                                string newRegNum = Console.ReadLine();
-                                Console.Write($"Enter Availability ({existingVehicle.AVAILABILITY}): ");
-                                string newAvailability = Console.ReadLine();
-                                Console.Write($"Enter Daily Rate ({existingVehicle.DIALY_RATE}): ");
-                                string newDailyRate = Console.ReadLine();
-
-                                Vehicle updatedVehicle = new Vehicle
+                                catch (FormatException)
                                 {
-                                    VEHICLE_ID = updateVehicleId,
-                                    MODEL = string.IsNullOrEmpty(newModel) ? existingVehicle.MODEL : newModel,
-                                    MAKER = string.IsNullOrEmpty(newMaker) ? existingVehicle.MAKER : newMaker,
-                                    YEAR_COL = string.IsNullOrEmpty(newYearCol) ? existingVehicle.YEAR_COL : DateTime.Parse(newYearCol),
-                                    COLOR = string.IsNullOrEmpty(newColor) ? existingVehicle.COLOR : newColor,
-                                    REGISTRATION_NUM = string.IsNullOrEmpty(newRegNum) ? existingVehicle.REGISTRATION_NUM : newRegNum,
-                                    AVAILABILITY = string.IsNullOrEmpty(newAvailability) ? existingVehicle.AVAILABILITY : bool.Parse(newAvailability),
-                                    DIALY_RATE = string.IsNullOrEmpty(newDailyRate) ? existingVehicle.DIALY_RATE : decimal.Parse(newDailyRate)
-                                };
-
-                                carConnectApp.vehicleService.UpdateVehicle(updatedVehicle);
-
-                                Console.WriteLine($"Vehicle details updated successfully.");
+                                    Console.WriteLine("Invalid input format.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"An error occurred: {ex.Message}");
+                                }
+                                Console.WriteLine("Press any key to continue...");
+                                Console.ReadKey();
                             }
-                            catch (FormatException)
+                            else
                             {
-                                Console.WriteLine("Invalid input format. Please enter valid data.");
+                                Console.WriteLine("You do not have permission to perform this action.");
+                                Console.WriteLine("Press any key to continue...");
+                                Console.ReadKey();
                             }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
                             break;
 
-
-
                         case "5":
-                            try
+                            if (isAdmin)
                             {
-                                Console.Write("Enter Vehicle ID to remove: ");
-                                int removeVehicleId = int.Parse(Console.ReadLine());
-                                vehicleService.RemoveVehicle(removeVehicleId);
+                                try
+                                {
+                                    Console.Write("Enter Vehicle ID to remove: ");
+                                    int removeVehicleId = int.Parse(Console.ReadLine());
+                                    vehicleService.RemoveVehicle(removeVehicleId);
+                                    Console.WriteLine("Vehicle removed successfully.");
+                                }
+                                catch (FormatException)
+                                {
+                                    Console.WriteLine("Invalid input format.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"An error occurred: {ex.Message}");
+                                }
+                                Console.WriteLine("Press any key to continue...");
+                                Console.ReadKey();
                             }
-                            catch (FormatException)
+                            else
                             {
-                                Console.WriteLine("Invalid input format.");
+                                Console.WriteLine("You do not have permission to perform this action.");
+                                Console.WriteLine("Press any key to continue...");
+                                Console.ReadKey();
                             }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
                             break;
 
                         case "0":
                             return;
 
                         default:
-                            Console.WriteLine("Invalid option. Please try again.");
-                            Console.WriteLine("Press any key to continue...");
+                            Console.WriteLine("Invalid choice. Press any key to continue...");
                             Console.ReadKey();
                             break;
                     }
@@ -517,7 +685,122 @@ namespace CarConnect.CarConnectApp
 
 
 
-            static void ReservationServiceMenu()
+
+            static void CustomerServiceMenu(string authenticatedUsername)
+            {
+            CarConnectApplication carConnectApp = new CarConnectApplication();
+            Customer authenticatedCustomer = carConnectApp.customerService.GetCustomerByUsername(authenticatedUsername);
+
+            if (authenticatedCustomer == null)
+            {
+                Console.WriteLine("Authenticated customer not found.");
+                return;
+            }
+
+            bool exitCustomerMenu = false;
+            while (!exitCustomerMenu)
+            {
+                Console.WriteLine("\n\nCustomer Service Menu");
+                Console.WriteLine("1. View My Details");
+                Console.WriteLine("2. Update My Details");
+                Console.WriteLine("3. Delete My Account");
+                Console.WriteLine("4. Logout");
+                Console.WriteLine("0. Back to Main Menu");
+                Console.Write("Select an option: ");
+                string choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        Console.WriteLine($"Customer Details:");
+                        Console.WriteLine($"Customer ID: {authenticatedCustomer.CUSTOMER_ID}");
+                        Console.WriteLine($"First Name: {authenticatedCustomer.FIRST_NAME}");
+                        Console.WriteLine($"Last Name: {authenticatedCustomer.LAST_NAME}");
+                        Console.WriteLine($"Email: {authenticatedCustomer.EMAIL}");
+                        Console.WriteLine($"Phone Number: {authenticatedCustomer.PHONE_NUMBER}");
+                        Console.WriteLine($"Address: {authenticatedCustomer.ADDRESS}");
+                        Console.WriteLine($"Username: {authenticatedCustomer.USERNAME}");
+                        Console.WriteLine($"Registration Date: {authenticatedCustomer.registration_date}");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
+                    case "2":
+                        Console.WriteLine($"Updating details for Customer: {authenticatedCustomer.FIRST_NAME} {authenticatedCustomer.LAST_NAME}");
+
+                        Console.Write($"Enter First Name ({authenticatedCustomer.FIRST_NAME}): ");
+                        string newFirstName = Console.ReadLine();
+                        Console.Write($"Enter Last Name ({authenticatedCustomer.LAST_NAME}): ");
+                        string newLastName = Console.ReadLine();
+                        Console.Write($"Enter Email ({authenticatedCustomer.EMAIL}): ");
+                        string newEmail = Console.ReadLine();
+                        Console.Write($"Enter Phone Number ({authenticatedCustomer.PHONE_NUMBER}): ");
+                        string newPhoneNumber = Console.ReadLine();
+                        Console.Write($"Enter Address ({authenticatedCustomer.ADDRESS}): ");
+                        string newAddress = Console.ReadLine();
+                        Console.Write($"Enter Username ({authenticatedCustomer.USERNAME}): ");
+                        string newUsername = Console.ReadLine();
+                        Console.Write("Enter New Password: ");
+                        string newPassword = Console.ReadLine();
+
+                        Customer updatedCustomer = new Customer
+                        {
+                            CUSTOMER_ID = authenticatedCustomer.CUSTOMER_ID,
+                            FIRST_NAME = string.IsNullOrEmpty(newFirstName) ? authenticatedCustomer.FIRST_NAME : newFirstName,
+                            LAST_NAME = string.IsNullOrEmpty(newLastName) ? authenticatedCustomer.LAST_NAME : newLastName,
+                            EMAIL = string.IsNullOrEmpty(newEmail) ? authenticatedCustomer.EMAIL : newEmail,
+                            PHONE_NUMBER = string.IsNullOrEmpty(newPhoneNumber) ? authenticatedCustomer.PHONE_NUMBER : newPhoneNumber,
+                            ADDRESS = string.IsNullOrEmpty(newAddress) ? authenticatedCustomer.ADDRESS : newAddress,
+                            USERNAME = string.IsNullOrEmpty(newUsername) ? authenticatedCustomer.USERNAME : newUsername,
+                            PASSWORD = string.IsNullOrEmpty(newPassword) ? authenticatedCustomer.PASSWORD : newPassword,
+                            registration_date = authenticatedCustomer.registration_date
+                        };
+
+                        carConnectApp.customerService.UpdateCustomer(updatedCustomer);
+                        Console.WriteLine("Customer details updated successfully.");
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
+                    case "3":
+                        try
+                        {
+                            Console.Write("Are you sure you want to delete your account? (yes/no): ");
+                            string confirmation = Console.ReadLine();
+                            if (confirmation.ToLower() == "yes")
+                            {
+                                carConnectApp.customerService.DeleteCustomer(authenticatedCustomer.CUSTOMER_ID);
+                                Console.WriteLine("Your account has been deleted successfully.");
+                                exitCustomerMenu = true;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"An error occurred: {ex.Message}");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+
+                    case "4":
+
+                    case "0":
+                        exitCustomerMenu = true;
+                        break;
+
+                    default:
+                        Console.WriteLine("Invalid choice. Press any key to continue...");
+                        Console.ReadKey();
+                        break;
+                }
+            }
+        }
+
+
+
+
+
+        static void ReservationServiceMenu()
             {
                 CarConnectApplication carConnectApp = new CarConnectApplication();
 
@@ -534,48 +817,49 @@ namespace CarConnect.CarConnectApp
                     Console.Write("Select an option: ");
                     string choice = Console.ReadLine();
 
-                    switch (choice)
+                   
+                switch (choice)
                     {
-                        case "1":
-                            try
+                    case "1":
+                        try
+                        {
+                            Console.Write("Enter Reservation ID: ");
+                            int reservationId = int.Parse(Console.ReadLine());
+                            Reservation reservationById = reservationService.GetReservationById(reservationId);
+                            if (reservationById != null)
                             {
-                                Console.Write("Enter Reservation ID: ");
-                                int reservationId = int.Parse(Console.ReadLine());
-                                Reservation reservationById = carConnectApp.reservationService.GetReservationById(reservationId);
-                                if (reservationById != null)
-                                {
-                                    Console.WriteLine("Reservation Details:");
-                                    Console.WriteLine($"Reservation ID: {reservationById.RESERVATION_ID}");
-                                    Console.WriteLine($"Customer ID: {reservationById.CUSTOMER_ID}");
-                                    Console.WriteLine($"Vehicle ID: {reservationById.VEHICLE_ID}");
-                                    Console.WriteLine($"Start Date: {reservationById.START_DATE}");
-                                    Console.WriteLine($"End Date: {reservationById.END_DATE}");
-                                    Console.WriteLine($"Total Cost: {reservationById.TOTAL_COST}");
-                                    Console.WriteLine($"Status: {reservationById.STATUS}");
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Reservation not found.");
-                                }
+                                Console.WriteLine("Reservation Details:");
+                                Console.WriteLine($"Reservation ID: {reservationById.RESERVATION_ID}");
+                                Console.WriteLine($"Customer ID: {reservationById.CUSTOMER_ID}");
+                                Console.WriteLine($"Vehicle ID: {reservationById.VEHICLE_ID}");
+                                Console.WriteLine($"Start Date: {reservationById.START_DATE}");
+                                Console.WriteLine($"End Date: {reservationById.END_DATE}");
+                                Console.WriteLine($"Total Cost: {reservationById.TOTAL_COST}");
+                                Console.WriteLine($"Status: {reservationById.STATUS}");
                             }
-                            catch (FormatException)
+                            else
                             {
-                                Console.WriteLine("Invalid input. Please enter a valid Reservation ID.");
+                                Console.WriteLine("Reservation not found.");
                             }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
-                            break;
+                        }
+                        catch (FormatException)
+                        {
+                            Console.WriteLine("Invalid input. Please enter a valid Reservation ID.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"An error occurred: {ex.Message}");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
 
-                        case "2":
+                    case "2":
                             try
                             {
                                 Console.Write("Enter Customer ID: ");
                                 int customerId = int.Parse(Console.ReadLine());
-                                List<Reservation> reservationsByCustomerId = carConnectApp.reservationService.GetReservationsByCustomerId(customerId);
+                                List<Reservation> reservationsByCustomerId = reservationService.GetReservationsByCustomerId(customerId);
                                 if (reservationsByCustomerId.Count > 0)
                                 {
                                     Console.WriteLine("Reservations:");
@@ -601,74 +885,77 @@ namespace CarConnect.CarConnectApp
                             Console.ReadKey();
                             break;
 
-                        case "3":
-                            Reservation reservations = new Reservation();
+                    case "3":
+                        try
+                        {
+                            Console.Write("Enter Customer ID: ");
+                            int customerId = int.Parse(Console.ReadLine());
 
-                            try
+                            Console.WriteLine("\n\nAvailable Vehicle IDs:");
+                            var availableVehicles = vehicleService.GetAvailableVehicles();
+                            foreach (var vehicle in availableVehicles)
                             {
-                                Console.Write("Enter Customer ID: ");
-                                int customerId = int.Parse(Console.ReadLine());
-                                Console.Write("Enter Vehicle ID:");
-                                Console.WriteLine("\n\nAvailable Vehicle IDs:");
-                                var availableVehicles = carConnectApp.vehicleService.GetAvailableVehicles();
-                                foreach (var vehicle in availableVehicles)
-                                {
-                                    Console.WriteLine(vehicle.VEHICLE_ID);
-                                }
-                                int vehicleId = int.Parse(Console.ReadLine());
-                                Console.Write("Enter Start Date (yyyy-MM-dd HH:mm:ss): ");
-                                DateTime startDate = DateTime.Parse(Console.ReadLine());
-                                Console.Write("Enter End Date (yyyy-MM-dd HH:mm:ss): ");
-                                DateTime endDate = DateTime.Parse(Console.ReadLine());
-                                Console.WriteLine("Enter Daily Rate:");
-                                int dailyRate = int.Parse(Console.ReadLine());
-                                int totalDays = (int)(endDate - startDate).TotalDays;
-                                decimal totalCost = reservations.CalculateTotalCost(dailyRate, totalDays);
-
-                                bool isReserved = carConnectApp.reservationService.IsVehicleReserved(vehicleId, startDate, endDate);
-                                string status = isReserved ? "reserved" : "confirmed";
-
-                                if (isReserved)
-                                {
-                                    throw new ReservationException("The vehicle is already reserved for the selected dates.");
-                                }
-
-                                Reservation newReservation = new Reservation
-                                {
-                                    CUSTOMER_ID = customerId,
-                                    VEHICLE_ID = vehicleId,
-                                    START_DATE = startDate,
-                                    END_DATE = endDate,
-                                    STATUS = status,
-                                };
-                                newReservation.TOTAL_COST = totalCost;
-                                carConnectApp.reservationService.CreateReservation(newReservation);
-                                Console.WriteLine($"Reservation created successfully. Total cost: {totalCost}");
+                                Console.WriteLine(vehicle.VEHICLE_ID);
                             }
-                            catch (ReservationException ex)
+
+                            Console.Write("Enter Vehicle ID: ");
+                            int vehicleId = int.Parse(Console.ReadLine());
+
+                            Console.Write("Enter Start Date (yyyy-MM-dd HH:mm:ss): ");
+                            DateTime startDate = DateTime.Parse(Console.ReadLine());
+
+                            Console.Write("Enter End Date (yyyy-MM-dd HH:mm:ss): ");
+                            DateTime endDate = DateTime.Parse(Console.ReadLine());
+
+                            Console.Write("Enter Daily Rate: ");
+                            decimal dailyRate = decimal.Parse(Console.ReadLine());
+
+                            int totalDays = (int)(endDate - startDate).TotalDays;
+                            if (totalDays <= 0)
                             {
-                                Console.WriteLine($"Reservation error: {ex.Message}");
+                                throw new Exception("End date must be later than start date.");
                             }
-                            catch (FormatException)
+
+                            decimal totalCost = dailyRate * totalDays;
+
+                            Reservation newReservation = new Reservation
                             {
-                                Console.WriteLine("Invalid input. Please enter valid data.");
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
-                            break;
+                                CUSTOMER_ID = customerId,
+                                VEHICLE_ID = vehicleId,
+                                START_DATE = startDate,
+                                END_DATE = endDate,
+                                TOTAL_COST = totalCost,
+                                STATUS = "confirmed"
+                            };
+
+                            reservationService.CreateReservation(newReservation);
+                            Console.WriteLine($"Reservation created successfully. Total cost: {totalCost}");
+                        }
+                        catch (ReservationException ex)
+                        {
+                            Console.WriteLine($"Reservation error: {ex.Message}");
+                        }
+                        catch (FormatException)
+                        {
+                            Console.WriteLine("Invalid input. Please enter valid data.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"An error occurred: {ex.Message}");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
 
 
-                        case "4":
+
+                    case "4":
                             try
                             {
                                 Console.Write("Enter Reservation ID to update: ");
                                 int reservationId = int.Parse(Console.ReadLine());
 
-                                Reservation existingReservation = carConnectApp.reservationService.GetReservationById(reservationId);
+                                Reservation existingReservation = reservationService.GetReservationById(reservationId);
                                 if (existingReservation == null)
                                 {
                                     Console.WriteLine("Reservation not found.");
@@ -701,7 +988,7 @@ namespace CarConnect.CarConnectApp
                                     STATUS = string.IsNullOrEmpty(newStatus) ? existingReservation.STATUS : newStatus
                                 };
 
-                                carConnectApp.reservationService.UpdateReservation(updatedReservation);
+                                reservationService.UpdateReservation(updatedReservation);
                                 Console.WriteLine("Reservation details updated successfully.");
                             }
                             catch (FormatException)
@@ -721,7 +1008,7 @@ namespace CarConnect.CarConnectApp
                             {
                                 Console.Write("Enter Reservation ID to cancel: ");
                                 int cancelReservationId = int.Parse(Console.ReadLine());
-                                carConnectApp.reservationService.CancelReservation(cancelReservationId);
+                                reservationService.CancelReservation(cancelReservationId);
                             }
                             catch (FormatException)
                             {
@@ -752,8 +1039,8 @@ namespace CarConnect.CarConnectApp
                 CarConnectApplication carConnectApp = new CarConnectApplication();
                 while (true)
                 {
-                    Console.Clear();
-                    Console.WriteLine("Admin Service Menu");
+                    
+                    Console.WriteLine("\n\nAdmin Service Menu");
                     Console.WriteLine("1. Get Admin by ID");
                     Console.WriteLine("2. Get Admin by Username");
                     Console.WriteLine("3. Register Admin");
@@ -770,7 +1057,7 @@ namespace CarConnect.CarConnectApp
                             {
                                 Console.Write("Enter Admin ID: ");
                                 int adminId = int.Parse(Console.ReadLine());
-                                Admin adminById = carConnectApp.AdminService.GetAdminById(adminId);
+                                Admin adminById = carConnectApp.adminService.GetAdminById(adminId);
                                 if (adminById != null)
                                 {
                                     Console.WriteLine($"Admin Details:");
@@ -802,7 +1089,7 @@ namespace CarConnect.CarConnectApp
                         case "2":
                             Console.Write("Enter Username: ");
                             string username = Console.ReadLine();
-                            Admin adminByUsername = carConnectApp.AdminService.GetAdminByUsername(username);
+                            Admin adminByUsername = carConnectApp.adminService.GetAdminByUsername(username);
                             if (adminByUsername != null)
                             {
                                 Console.WriteLine($"Admin Details:");
@@ -849,7 +1136,7 @@ namespace CarConnect.CarConnectApp
                                 JOIN_DATE = DateTime.Now
                             };
 
-                            carConnectApp.AdminService.RegisterAdmin(newAdmin);
+                            carConnectApp.adminService.RegisterAdmin(newAdmin);
                             Console.WriteLine("Admin registered successfully.");
                             Console.WriteLine("Press any key to continue...");
                             Console.ReadKey();
@@ -861,7 +1148,7 @@ namespace CarConnect.CarConnectApp
                                 Console.Write("Enter Admin ID to update: ");
                                 int updateAdminId = int.Parse(Console.ReadLine());
 
-                                Admin existingAdmin = carConnectApp.AdminService.GetAdminById(updateAdminId);
+                                Admin existingAdmin = carConnectApp.adminService.GetAdminById(updateAdminId);
                                 if (existingAdmin == null)
                                 {
                                     Console.WriteLine("Admin not found.");
@@ -898,7 +1185,7 @@ namespace CarConnect.CarConnectApp
                                     JOIN_DATE = existingAdmin.JOIN_DATE
                                 };
 
-                                carConnectApp.AdminService.UpdateAdmin(updatedAdmin);
+                                carConnectApp.adminService.UpdateAdmin(updatedAdmin);
                                 Console.WriteLine("Admin details updated successfully.");
                             }
                             catch (FormatException)
@@ -913,29 +1200,31 @@ namespace CarConnect.CarConnectApp
                             Console.ReadKey();
                             break;
 
-                        case "5":
-                            try
-                            {
-                                Console.Write("Enter Admin ID to delete: ");
-                                int deleteAdminId = int.Parse(Console.ReadLine());
-                                carConnectApp.AdminService.DeleteAdmin(deleteAdminId);
-                                Console.WriteLine($"Admin with Admin Id {deleteAdminId} is successfully deleted...");
+                    case "5":
+                        try
+                        {
+                            Console.Write("Enter Admin ID to delete: ");
+                            int deleteAdminId = int.Parse(Console.ReadLine());
+                            bool isDeleted = carConnectApp.adminService.DeleteAdmin(deleteAdminId);
 
-                            }
-                            catch (FormatException)
+                            if (isDeleted)
                             {
-                                Console.WriteLine("Invalid input. Please enter a valid Admin ID.");
+                                Console.WriteLine($"Admin with Admin Id {deleteAdminId} is successfully deleted.");
                             }
+                        }
+                        catch (FormatException)
+                        {
+                            Console.WriteLine("Invalid input. Please enter a valid Admin ID.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"An error occurred: {ex.Message}");
+                        }
+                        Console.WriteLine("Press any key to continue...");
+                        Console.ReadKey();
+                        break;
 
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"An error occurred: {ex.Message}");
-                            }
-                            Console.WriteLine("Press any key to continue...");
-                            Console.ReadKey();
-                            break;
-
-                        case "0":
+                    case "0":
                             return;
                         default:
                             Console.WriteLine("Invalid choice. Press any key to continue...");
@@ -947,4 +1236,6 @@ namespace CarConnect.CarConnectApp
 
         }
     }
-}
+    
+
+
